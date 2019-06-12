@@ -186,24 +186,37 @@ class KnowledgeGraph(object):
             if not hop.wildcard and hop.vertex not in self.vertices:
                 return False
         
+        # TODO: This code below is currently never executed, since
+        # all walks are of the form root --> wildcards --> vertex
+
         # Process second element until end. Alternate between entities and predicates.
-        for hop_nr, hop in zip(range(1, len(walk)), walk[1:]):
-            new_explore = set()
-            for node in to_explore:
-                #print(hop.vertex.name, hop.wl_depth, node.name, hop.vertex in self.label_map)
-                if not hop.wildcard and (self.label_map[node][hop.wl_depth] != kg.label_map[hop.vertex][hop.wl_depth]):
-                    continue
+        for hop_nr, hop in enumerate(walk[1:]):
                                
-                if hop_nr == len(walk) - 1:
-                    return True
-                    
-                for neighbor in self.get_neighbors(node):
-                    new_explore.add(neighbor)
+            if hop_nr == len(walk) - 1:
+                return True
+                
+            #print(hop, hop.vertex.name, [x.name for x in to_explore])
+            new_explore = set()
+            if not hop.vertex.predicate:  # Entity
+                if hop.wildcard:
+                    for node in to_explore:
+                        for neighbor in self.get_neighbors(node):
+                            new_explore.add(neighbor)
+                else:
+                    for node in to_explore:
+                        if hop.vertex.name in [x.name for x in self.get_neighbors(node)]:
+                            new_explore.add(self.name_to_vertex[hop.vertex.name])
+            else:  # Predicate
+                for node in to_explore:
+                    for neighbor in self.get_neighbors(node):
+                        if hop.wildcard or neighbor.name == hop.vertex.name:
+                            new_explore.add(neighbor)
 
             to_explore = new_explore
             
             if len(to_explore) == 0:
                 return False
+
 
         return True
 
