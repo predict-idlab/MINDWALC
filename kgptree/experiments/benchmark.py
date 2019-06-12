@@ -42,7 +42,7 @@ def train_model(rdf_file, format, train_file, test_file, entity_col, label_col, 
 	results['params'] = clf.best_params_
 	results['time'] = time.time() - start
 
-	preds = clf.predict(test_rocks)
+	preds = clf.predict(test_entities)
 
 	results['accuracy'] = accuracy_score(test_labels, preds)
 	results['confusion_matrix'] = confusion_matrix(test_labels, preds)
