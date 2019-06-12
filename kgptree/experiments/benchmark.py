@@ -12,10 +12,13 @@ import time
 
 import pickle
 
-def train_model(rdf_file, train_file, test_file, entity_col, label_col, label_predicates, output):
+def train_model(rdf_file, format, train_file, test_file, entity_col, label_col, label_predicates, output):
 	print(end='Loading data... ', flush=True)
 	g = rdflib.Graph()
-	g.parse(rdf_file, format='nt')
+	if format is not None:
+		g.parse(rdf_file, format=format)
+	else:
+		g.parse(rdf_file)
 	print('OK')
 
 	test_data = pd.read_csv(train_file, sep='\t')
@@ -53,6 +56,7 @@ def train_model(rdf_file, train_file, test_file, entity_col, label_col, label_pr
 
 ##################### AIFB #####################################
 rdf_file = '../data/AIFB/aifb.n3'
+format = 'n3'
 train_file = '../data/AIFB/AIFB_test.tsv'
 test_file = '../data/AIFB/AIFB_train.tsv'
 entity_col = 'person'
@@ -63,10 +67,11 @@ label_predicates = [
     rdflib.URIRef('http://swrc.ontoware.org/ontology#carriedOutBy')
 ]
 output = 'output/aifb.p'
-train_model(rdf_file, train_file, test_file, entity_col, label_col, label_predicates, output)
+train_model(rdf_file, format, train_file, test_file, entity_col, label_col, label_predicates, output)
 
 ###################### BGS #####################################
 rdf_file = '../data/BGS/BGS.nt'
+format = 'nt'
 train_file = '../data/BGS/BGS_test.tsv'
 test_file = '../data/BGS/BGS_train.tsv'
 entity_col = 'rock'
@@ -77,11 +82,12 @@ label_predicates = [
     rdflib.term.URIRef('http://data.bgs.ac.uk/ref/Lexicon/hasTheme')
 ]
 output = 'output/bgs.p'
-train_model(rdf_file, train_file, test_file, entity_col, label_col, label_predicates, output)
+train_model(rdf_file, format, train_file, test_file, entity_col, label_col, label_predicates, output)
 
 
 ##################### MUTAG ####################################
 rdf_file = '../data/MUTAG/mutag.owl'
+format = None
 train_file = '../data/MUTAG/MUTAG_test.tsv'
 test_file = '../data/MUTAG/MUTAG_train.tsv'
 entity_col = 'bond'
@@ -90,11 +96,12 @@ label_predicates = [
     rdflib.term.URIRef('http://dl-learner.org/carcinogenesis#isMutagenic')
 ]
 output = 'output/mutag.p'
-train_model(rdf_file, train_file, test_file, entity_col, label_col, label_predicates, output)
+train_model(rdf_file, format, train_file, test_file, entity_col, label_col, label_predicates, output)
 
 
 ###################### AM ######################################
 rdf_file = '../data/AM/rdf_am-data.ttl'
+format = 'turtle'
 train_file = '../data/AM/AM_test.tsv'
 test_file = '../data/AM/AM_train.tsv'
 entity_col = 'proxy'
@@ -104,4 +111,4 @@ label_predicates = [
     rdflib.term.URIRef('http://purl.org/collections/nl/am/material')
 ]
 output = 'output/am.p'
-train_model(rdf_file, train_file, test_file, entity_col, label_col, label_predicates, output)
+train_model(rdf_file, format, train_file, test_file, entity_col, label_col, label_predicates, output)
