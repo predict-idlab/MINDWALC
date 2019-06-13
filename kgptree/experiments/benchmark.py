@@ -54,19 +54,31 @@ def train_model(rdf_file, format, train_file, test_file, entity_col, label_col, 
 
 
 
-##################### AIFB #####################################
-rdf_file = '../data/AIFB/aifb.n3'
-format = 'n3'
-train_file = '../data/AIFB/AIFB_test.tsv'
-test_file = '../data/AIFB/AIFB_train.tsv'
-entity_col = 'person'
-label_col = 'label_affiliation'
+###################### AM ######################################
+rdf_file = '../data/AM/rdf_am-data.ttl'
+format = 'turtle'
+train_file = '../data/AM/AM_test.tsv'
+test_file = '../data/AM/AM_train.tsv'
+entity_col = 'proxy'
+label_col = 'label_cateogory'
 label_predicates = [
-    rdflib.URIRef('http://swrc.ontoware.org/ontology#affiliation'),
-    rdflib.URIRef('http://swrc.ontoware.org/ontology#employs'),
-    rdflib.URIRef('http://swrc.ontoware.org/ontology#carriedOutBy')
+    rdflib.term.URIRef('http://purl.org/collections/nl/am/objectCategory'),
+    rdflib.term.URIRef('http://purl.org/collections/nl/am/material')
 ]
-output = 'output/aifb_depth10.p'
+output = 'output/am_depth10.p'
+train_model(rdf_file, format, train_file, test_file, entity_col, label_col, label_predicates, output)
+
+##################### MUTAG ####################################
+rdf_file = '../data/MUTAG/mutag.owl'
+format = None
+train_file = '../data/MUTAG/MUTAG_test.tsv'
+test_file = '../data/MUTAG/MUTAG_train.tsv'
+entity_col = 'bond'
+label_col = 'label_mutagenic'
+label_predicates = [
+    rdflib.term.URIRef('http://dl-learner.org/carcinogenesis#isMutagenic')
+]
+output = 'output/mutag_depth10.p'
 train_model(rdf_file, format, train_file, test_file, entity_col, label_col, label_predicates, output)
 
 ###################### BGS #####################################
@@ -84,31 +96,17 @@ label_predicates = [
 output = 'output/bgs_depth10.p'
 train_model(rdf_file, format, train_file, test_file, entity_col, label_col, label_predicates, output)
 
-
-##################### MUTAG ####################################
-rdf_file = '../data/MUTAG/mutag.owl'
-format = None
-train_file = '../data/MUTAG/MUTAG_test.tsv'
-test_file = '../data/MUTAG/MUTAG_train.tsv'
-entity_col = 'bond'
-label_col = 'label_mutagenic'
+##################### AIFB #####################################
+rdf_file = '../data/AIFB/aifb.n3'
+format = 'n3'
+train_file = '../data/AIFB/AIFB_test.tsv'
+test_file = '../data/AIFB/AIFB_train.tsv'
+entity_col = 'person'
+label_col = 'label_affiliation'
 label_predicates = [
-    rdflib.term.URIRef('http://dl-learner.org/carcinogenesis#isMutagenic')
+    rdflib.URIRef('http://swrc.ontoware.org/ontology#affiliation'),
+    rdflib.URIRef('http://swrc.ontoware.org/ontology#employs'),
+    rdflib.URIRef('http://swrc.ontoware.org/ontology#carriedOutBy')
 ]
-output = 'output/mutag_depth10.p'
-train_model(rdf_file, format, train_file, test_file, entity_col, label_col, label_predicates, output)
-
-
-###################### AM ######################################
-rdf_file = '../data/AM/rdf_am-data.ttl'
-format = 'turtle'
-train_file = '../data/AM/AM_test.tsv'
-test_file = '../data/AM/AM_train.tsv'
-entity_col = 'proxy'
-label_col = 'label_cateogory'
-label_predicates = [
-    rdflib.term.URIRef('http://purl.org/collections/nl/am/objectCategory'),
-    rdflib.term.URIRef('http://purl.org/collections/nl/am/material')
-]
-output = 'output/am_depth10.p'
+output = 'output/aifb_depth10.p'
 train_model(rdf_file, format, train_file, test_file, entity_col, label_col, label_predicates, output)
