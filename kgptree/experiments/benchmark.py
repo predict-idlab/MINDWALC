@@ -36,7 +36,7 @@ def train_model(rdf_file, format, train_file, test_file, entity_col, label_col, 
 	#clf = GridSearchCV(KGPTree(kg, path_max_depth=6, neighborhood_depth=8), scoring='accuracy',
 	#				   {'max_tree_depth': [5, 7, 10, 13, None], 'min_samples_leaf': [1, 3, 5, 10]}, 
 	#				   cv=StratifiedKFold(n_splits=5))
-	clf = KGPTree(kg, path_max_depth=6, neighborhood_depth=8, max_tree_depth=None, min_samples_leaf=1)
+	clf = KGPTree(kg, path_max_depth=6, neighborhood_depth=8, max_tree_depth=10, min_samples_leaf=1)
 	clf.fit(train_entities, train_labels)
 
 	results = {}
@@ -67,7 +67,7 @@ label_predicates = [
     rdflib.URIRef('http://swrc.ontoware.org/ontology#employs'),
     rdflib.URIRef('http://swrc.ontoware.org/ontology#carriedOutBy')
 ]
-output = 'output/aifb_no_tuning.p'
+output = 'output/aifb_depth10.p'
 train_model(rdf_file, format, train_file, test_file, entity_col, label_col, label_predicates, output)
 
 ###################### BGS #####################################
@@ -82,7 +82,7 @@ label_predicates = [
     rdflib.term.URIRef('http://data.bgs.ac.uk/ref/Lexicon/hasLithogenesisDescription'),
     rdflib.term.URIRef('http://data.bgs.ac.uk/ref/Lexicon/hasTheme')
 ]
-output = 'output/bgs_no_tuning.p'
+output = 'output/bgs_depth10.p'
 train_model(rdf_file, format, train_file, test_file, entity_col, label_col, label_predicates, output)
 
 
@@ -96,7 +96,7 @@ label_col = 'label_mutagenic'
 label_predicates = [
     rdflib.term.URIRef('http://dl-learner.org/carcinogenesis#isMutagenic')
 ]
-output = 'output/mutag_no_tuning.p'
+output = 'output/mutag_depth10.p'
 train_model(rdf_file, format, train_file, test_file, entity_col, label_col, label_predicates, output)
 
 
@@ -111,5 +111,5 @@ label_predicates = [
     rdflib.term.URIRef('http://purl.org/collections/nl/am/objectCategory'),
     rdflib.term.URIRef('http://purl.org/collections/nl/am/material')
 ]
-output = 'output/am_no_tuning.p'
+output = 'output/am_depth10.p'
 train_model(rdf_file, format, train_file, test_file, entity_col, label_col, label_predicates, output)
