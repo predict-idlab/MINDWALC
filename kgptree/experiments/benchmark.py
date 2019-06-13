@@ -40,7 +40,7 @@ def train_model(rdf_file, format, train_file, test_file, entity_col, label_col, 
 	clf.fit(train_entities, train_labels)
 
 	results = {}
-	results['params'] = clf.best_params_
+	#results['params'] = clf.best_params_
 	results['time'] = time.time() - start
 
 	preds = clf.predict(test_entities)
