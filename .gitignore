@@ -1,5 +1,7 @@
 kgptree/data/*
 
+!kgptree/data/AIFB/*
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
