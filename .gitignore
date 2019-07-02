@@ -1,4 +1,7 @@
-kgptree/data/*
+kgptree/data/*/*
+!kgptree/data/AIFB/aifb.n3
+!kgptree/data/AIFB/AIFB_test.tsv
+!kgptree/data/AIFB/AIFB_train.tsv
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
