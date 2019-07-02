@@ -35,28 +35,6 @@ def train_model(rdf_file, format, train_file, test_file, entity_col, label_col, 
         start = time.time()
         best_score, best_depth, best_samples = float('-inf'), None, None
         
-        #for max_depth in list(range(7, 16, 2)) + [None]:
-        #    for samples in [1, 5, 10]:
-        #        skf = StratifiedKFold(n_splits=5, shuffle=True)
-        #        accs = []
-        #        for train_idx, test_idx in skf.split(train_entities, train_labels):
-        #            train_cv_entities = [train_entities[i] for i in train_idx]
-        #            test_cv_entities = [train_entities[i] for i in test_idx]
-        #            train_cv_labels = [train_labels[i] for i in train_idx]
-        #            test_cv_labels = [train_labels[i] for i in test_idx]
-        #            clf = KGPTree(kg, path_max_depth=6, neighborhood_depth=8, 
-        #                          max_tree_depth=max_depth, min_samples_leaf=samples)
-        #            clf.fit(train_cv_entities, train_cv_labels)
-        #            preds = clf.predict(test_cv_entities)
-        #            accs.append(accuracy_score(test_cv_labels, preds))
-        #        print(max_depth, samples, accs)
-        #        score = np.mean(accs)
-        #        if score > best_score:
-        #            best_score = score
-        #            best_samples = samples
-        #            best_depth = max_depth
-
-        #for _ in range(10):
         clf = KGPTree(kg, path_max_depth=8, neighborhood_depth=8, max_tree_depth=None, min_samples_leaf=1)
         clf.fit(train_entities, train_labels)
 
