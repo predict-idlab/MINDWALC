@@ -41,6 +41,8 @@ kg = KnowledgeGraph.rdflib_to_kg(g, label_predicates=label_predicates)
 
 clf = KGPTree(kg, path_max_depth=6, neighborhood_depth=8, min_samples_leaf=1, max_tree_depth=5)
 
+clf.fit(train_entities, train_labels)
+
 preds = clf.predict(test_entities)
 print(accuracy_score(test_labels, preds))
 ```
