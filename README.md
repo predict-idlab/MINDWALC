@@ -51,4 +51,4 @@ We provided an example Jupyter notebook as well (`kgptree/Example (AIFB).ipynb`)
 
 ## Reproducing results
 
-In order to reproduce the results, we provide a `kgptree/experiments/benchmark.py`. This will compare our algorithm to [RDF2Vec](http://semantic-web-journal.net/content/rdf2vec-rdf-graph-embeddings-and-their-applications-0) and [Relational Graph Convolutional Networks](https://arxiv.org/pdf/1703.06103.pdf). It will perform multiple runs on four datasets (AIFB, BGS, MUTAG and AM) and will write away the results of each run to `kgptree/experiments/output` for further processing.
+In order to reproduce the results, we provide a `kgptree/experiments/benchmark.py`. It will perform multiple runs on four datasets (AIFB, BGS, MUTAG and AM) and will write away the results of each run to `kgptree/experiments/output` for further processing.
