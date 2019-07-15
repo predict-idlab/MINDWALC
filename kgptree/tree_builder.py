@@ -1,6 +1,6 @@
 from datastructures import *
 from sklearn.base import ClassifierMixin, BaseEstimator
-from tqdm import tqdm
+import tqdm
 from collections import Counter
 
 
@@ -29,7 +29,7 @@ class KGPTree(BaseEstimator, ClassifierMixin):
                                           for neighborhood in neighborhoods])))
 
         for d in range(2, self.path_max_depth + 1, 2):
-            for vertex in tqdm(vertices):
+            for vertex in tqdm.tqdm(vertices):
                 walk = self._create_walk(d, vertex)
                 igs[walk] = walk.calc_ig(self.kg, neighborhoods, labels, 
                                          prior_entropy=prior_entropy)
@@ -80,9 +80,9 @@ class KGPTree(BaseEstimator, ClassifierMixin):
     def fit(self, instances, labels, curr_tree_depth=0):
         # TODO: Check if input is alright
 
-        print('Extracting neighborhoods...')
+        tqdm.tqdm.write('Extracting neighborhoods...')
         neighborhoods = []
-        for inst in tqdm(instances):
+        for inst in tqdm.tqdm(instances):
             neighborhood = self.kg.extract_instance(inst, depth=self.neighborhood_depth)
             neighborhoods.append(neighborhood)
 
