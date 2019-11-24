@@ -17,6 +17,7 @@ from scipy.stats import entropy
 # The idea of using a hashing function is taken from:
 # https://github.com/benedekrozemberczki/graph2vec
 from hashlib import md5
+import copy
 
 
 ############################################################################
@@ -34,7 +35,6 @@ class Vertex(object):
         self._to = _to
         self.wildcard = wildcard
         self.literal = literal
-        self.parent = None
         
     def __eq__(self, other):
         if other is None: 
@@ -52,6 +52,16 @@ class Vertex(object):
             return hash((self._from, self._to, self.name))
         else:
             return hash(self.name)
+
+    def __lt__(self, other):
+        if self.predicate and not other.predicate:
+            return False
+        if not self.predicate and other.predicate:
+            return True
+        if self.predicate:
+            return (self.name, self._from, self._to) < (other.name, other._from, other._to)
+        else:
+            return self.name < other.name
 
 class KnowledgeGraph(object):
     def __init__(self):
@@ -166,6 +176,8 @@ class KnowledgeGraph(object):
                 self.inv_label_map[digest] = vertex
     
     def find_walk(self, walk, kg):
+        if len(list(filter(lambda x: not x.wildcard and not x.root, walk))) == 1:
+            return walk[-1].vertex.get_name() in self.depth_map[len(walk) - 1]
         
         # Process first element of walk: entity, root or wildcard (TODO: This should always be root!)
         if walk[0].root:
@@ -177,9 +189,6 @@ class KnowledgeGraph(object):
             if walk[0].vertex not in self.vertices: 
                 return False
             to_explore = self.get_neighbors(walk[0].vertex)
-            
-        if len(list(filter(lambda x: not x.wildcard and not x.root, walk))) == 1:
-            return walk[-1].vertex.get_name() in self.depth_map[len(walk) - 1]
             
         # Let's first check if all vertices in the walk are present
         for hop in walk[1:]:
@@ -267,8 +276,6 @@ class KnowledgeGraph(object):
             for v in list(to_explore):
                 subgraph.depth_map[d].add(v.get_name())
                 for neighbor in self.get_neighbors(v):
-                    # TODO: We should take a deepcopy of the neighbor first and then set its parent
-                    neighbor.parent = v
                     subgraph.add_vertex(neighbor)
                     subgraph.add_edge(v, neighbor)
                     #if neighbor not in explored:
@@ -276,8 +283,6 @@ class KnowledgeGraph(object):
                     #    explored.add(neighbor)
                     new_explore.add(neighbor)
             to_explore = new_explore
-            
-        subgraph.root.parent = None
         
         return subgraph
 
