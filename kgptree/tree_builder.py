@@ -21,7 +21,45 @@ class KGPTree(BaseEstimator, ClassifierMixin):
         walk.append(Hop(vertex))
         return walk
 
-    def _build_path(self, neighborhoods, labels, allowed_v=None):
+    def _get_useless(self, neighborhoods, labels):
+        useless = []
+
+        vertices = set(filter(lambda x: not x.predicate, 
+                              set.union(*[neighborhood.vertices 
+                                          for neighborhood in neighborhoods])))
+
+        vertices = list(vertices)
+
+        if self.progress is not None:
+            depth_iterator = self.progress(range(2, self.path_max_depth + 1, 2),
+                                           desc='depth loop', 
+                                           leave=False)
+        else:
+            depth_iterator = range(2, self.path_max_depth + 1, 2)
+
+        for d in depth_iterator:
+        # for d in range(self.path_max_depth + 1):
+            if self.progress is not None:
+                vertex_iterator = self.progress(vertices, desc='vertex loop', 
+                                                leave=False)
+            else:
+                vertex_iterator = vertices
+
+            for vertex in vertex_iterator:
+                walk = self._create_walk(d, vertex)
+
+                n_found = 0
+                for neighborhood, label in zip(neighborhoods, labels):
+                    if neighborhood.find_walk(walk):
+                        n_found += 1
+
+                if n_found <= 1 or n_found == len(neighborhoods):
+                    useless.append((len(walk) - 1, walk[-1].vertex.get_name()))
+
+        return set(useless)
+
+    def _build_path(self, neighborhoods, labels, allowed_v=None, 
+                    find_walk_cache=None, useless=None):
         prior_entropy = entropy(np.unique(labels, return_counts=True)[1])
         igs = {}
         vertices = set(filter(lambda x: not x.predicate, 
@@ -54,11 +92,15 @@ class KGPTree(BaseEstimator, ClassifierMixin):
                 vertex_iterator = vertices
 
             for vertex in vertex_iterator:
+                if useless is not None and (d, vertex.get_name()) in useless:
+                    continue
+
                 walk = self._create_walk(d, vertex)
                 igs[walk] = walk.calc_ig(self.kg, neighborhoods, labels, 
-                                         prior_entropy=prior_entropy)
+                                         prior_entropy=prior_entropy,
+                                         cache=find_walk_cache)
             
-        return sorted(igs.items(), key=lambda x: (-x[1]))[0]
+        return max(igs.items(), key=lambda x: x[1])
 
     def _stop_condition(self, neighborhoods, labels, curr_tree_depth):
         return (len(set(labels)) == 1 
@@ -68,14 +110,16 @@ class KGPTree(BaseEstimator, ClassifierMixin):
 
 
     def build_tree(self, neighborhoods, labels, curr_tree_depth=0, 
-                   allowed_v=None):
+                   allowed_v=None, find_walk_cache=None, useless=None):
         # Before doing many calculations, check if the stop conditions are met
         if self._stop_condition(neighborhoods, labels, curr_tree_depth):
             return Tree(walk=None, _class=Counter(labels).most_common(1)[0][0])
         
         # Create the path that maximizes information gain for these neighborhoods
         best_walk, best_ig = self._build_path(neighborhoods, labels, 
-                                              allowed_v=allowed_v)
+                                              allowed_v=allowed_v,
+                                              find_walk_cache=find_walk_cache,
+                                              useless=useless)
         
         if best_ig == 0:
             return Tree(walk=None, _class=Counter(labels).most_common(1)[0][0])
@@ -87,7 +131,7 @@ class KGPTree(BaseEstimator, ClassifierMixin):
         not_found_neighborhoods, not_found_labels = [], []
         
         for neighborhood, label in zip(neighborhoods, labels):
-            if neighborhood.find_walk(best_walk, self.kg):
+            if neighborhood.find_walk(best_walk):
                 found_neighborhoods.append(neighborhood)
                 found_labels.append(label)
             else:
@@ -96,11 +140,15 @@ class KGPTree(BaseEstimator, ClassifierMixin):
             
         node.right = self.build_tree(found_neighborhoods, found_labels, 
                                      curr_tree_depth=curr_tree_depth + 1,
-                                     allowed_v=allowed_v)
+                                     allowed_v=allowed_v,
+                                     find_walk_cache=find_walk_cache,
+                                     useless=useless)
             
         node.left = self.build_tree(not_found_neighborhoods, not_found_labels, 
                                     curr_tree_depth=curr_tree_depth + 1,
-                                    allowed_v=allowed_v)
+                                    allowed_v=allowed_v,
+                                    find_walk_cache=find_walk_cache,
+                                    useless=useless)
         
         return node
 
@@ -120,7 +168,11 @@ class KGPTree(BaseEstimator, ClassifierMixin):
                                                     depth=self.path_max_depth)
             neighborhoods.append(neighborhood)
 
-        self.tree_ = self.build_tree(neighborhoods, labels)
+        useless = self._get_useless(neighborhoods, labels)
+
+        self.tree_ = self.build_tree(neighborhoods, labels, 
+                                     find_walk_cache={},
+                                     useless=useless)
 
 
     def predict(self, instances):
@@ -142,6 +194,51 @@ class KGPForest(BaseEstimator, ClassifierMixin):
         self.vertex_sample = vertex_sample
         self.progress = progress
 
+    def _create_walk(self, depth, vertex):
+        walk = Walk()
+        walk.append(Hop('', root=True))
+        for _ in range(depth - 1):
+            walk.append(Hop(Vertex(''), wildcard=True))
+        walk.append(Hop(vertex))
+        return walk
+
+    def _get_useless(self, neighborhoods, labels):
+        useless = []
+
+        vertices = set(filter(lambda x: not x.predicate, 
+                              set.union(*[neighborhood.vertices 
+                                          for neighborhood in neighborhoods])))
+
+        vertices = list(vertices)
+
+        if self.progress is not None:
+            depth_iterator = self.progress(range(2, self.path_max_depth + 1, 2),
+                                           desc='depth loop', 
+                                           leave=False)
+        else:
+            depth_iterator = range(2, self.path_max_depth + 1, 2)
+
+        for d in depth_iterator:
+        # for d in range(self.path_max_depth + 1):
+            if self.progress is not None:
+                vertex_iterator = self.progress(vertices, desc='vertex loop', 
+                                                leave=False)
+            else:
+                vertex_iterator = vertices
+
+            for vertex in vertex_iterator:
+                walk = self._create_walk(d, vertex)
+
+                n_found = 0
+                for neighborhood, label in zip(neighborhoods, labels):
+                    if neighborhood.find_walk(walk):
+                        n_found += 1
+
+                if n_found <= 1 or n_found == len(neighborhoods):
+                    useless.append((len(walk) - 1, walk[-1].vertex.get_name()))
+
+        return set(useless)
+
     def fit(self, instances, labels):
         if self.progress is not None:
             inst_iterator = self.progress(instances, 
@@ -160,6 +257,9 @@ class KGPForest(BaseEstimator, ClassifierMixin):
                                                leave=True)
         else:
             estimator_iterator = range(self.n_estimators)
+
+        walk_cache = {}
+        useless = self._get_useless(neighborhoods, labels)
 
         self.estimators_ = []
         for _ in estimator_iterator:
@@ -189,7 +289,9 @@ class KGPForest(BaseEstimator, ClassifierMixin):
                            self.progress,
                            self.max_tree_depth)
             tree.tree_ = tree.build_tree(sampled_inst, sampled_labels, 
-                                         allowed_v=sampled_vertices)
+                                         allowed_v=sampled_vertices,
+                                         find_walk_cache=walk_cache,
+                                         useless=useless)
             self.estimators_.append(tree)
 
     def predict(self, instances):

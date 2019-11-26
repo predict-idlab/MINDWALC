@@ -64,6 +64,7 @@ class Vertex(object):
             return self.name < other.name
 
 class KnowledgeGraph(object):
+    _id = 0
     def __init__(self):
         self.vertices = set()
         self.transition_matrix = defaultdict(set)
@@ -72,6 +73,8 @@ class KnowledgeGraph(object):
         self.inv_label_map = {}
         self.name_to_vertex = {}
         self.root = None
+        self._id = KnowledgeGraph._id
+        KnowledgeGraph._id += 1
         
     def add_vertex(self, vertex):
         if vertex.predicate:
@@ -175,7 +178,7 @@ class KnowledgeGraph(object):
                 self.label_map[vertex][n] = digest
                 self.inv_label_map[digest] = vertex
     
-    def find_walk(self, walk, kg):
+    def find_walk(self, walk):
         if len(list(filter(lambda x: not x.wildcard and not x.root, walk))) == 1:
             return walk[-1].vertex.get_name() in self.depth_map[len(walk) - 1]
         
@@ -379,20 +382,30 @@ class Walk(list):
         neg_entr = entropy(np.unique(features[0], return_counts=True)[1])
         return prior_entropy - (pos_frac * pos_entr + neg_frac * neg_entr)
     
-    def calc_ig(self, kg, instances, labels, prior_entropy=None, min_samples_split=0, current_best=None):
+    def calc_ig(self, kg, instances, labels, prior_entropy=None, 
+                min_samples_split=0, current_best=None, cache=None):
         if prior_entropy is None:
             prior_entropy = entropy(np.unique(labels, return_counts=True)[1])
         
         features = {0: [], 1: []}
         for i, (inst, label) in enumerate(zip(instances, labels)):
-            features[int(inst.find_walk(self, kg))].append(label)
-            if current_best is not None:
-                ub = self.upper_ig(copy.deepcopy(features), len(instances), labels[i + 1:], prior_entropy)
-                if ub < current_best:
-                    #print('prune!')
-                    return 0
             
-        if len(features[True]) > min_samples_split and len(features[True]) < len(instances):
+            if cache is not None and (inst._id, len(self), self[-1].vertex.get_name()) in cache:
+                found = cache[(inst._id, len(self), self[-1].vertex.get_name())]
+            else:
+                found = int(inst.find_walk(self))
+                if cache is not None:
+                    cache[(inst._id, len(self), self[-1].vertex.get_name())] = found
+
+            features[found].append(label)
+
+            # if current_best is not None and current_best > 0:
+            #     ub = self.upper_ig(copy.deepcopy(features), len(instances), labels[i + 1:], prior_entropy)
+            #     if ub < current_best:
+            #         #print('prune!')
+            #         return 0
+            
+        if len(features[1]) > min_samples_split and len(features[1]) < len(instances):
             pos_frac = len(features[1]) / len(instances)
             pos_entr = entropy(np.unique(features[1], return_counts=True)[1])
             neg_frac = len(features[0]) / len(instances)
@@ -414,7 +427,7 @@ class Tree():
         if self.walk is None:
             return self._class
         
-        if sample.find_walk(self.walk, kg):
+        if sample.find_walk(self.walk):
             return self.right.evaluate(sample, kg)
         else:
             return self.left.evaluate(sample, kg)
