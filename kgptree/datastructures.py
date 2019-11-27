@@ -179,58 +179,59 @@ class KnowledgeGraph(object):
                 self.inv_label_map[digest] = vertex
     
     def find_walk(self, walk):
-        if len(list(filter(lambda x: not x.wildcard and not x.root, walk))) == 1:
-            return walk[-1].vertex.get_name() in self.depth_map[len(walk) - 1]
+        return walk[-1].vertex.get_name() in self.depth_map[len(walk) - 1]
+        # if len(list(filter(lambda x: not x.wildcard and not x.root, walk))) == 1:
+        #     return walk[-1].vertex.get_name() in self.depth_map[len(walk) - 1]
         
-        # Process first element of walk: entity, root or wildcard (TODO: This should always be root!)
-        if walk[0].root:
-            to_explore = self.get_neighbors(self.root)
-        elif walk[0].wildcard:
-            print('WARNING: Found a root of a walk which is a wildcard, this should not happen!')
-            to_explore = [self.get_neighbors(x) for x in self.vertices]
-        else:
-            if walk[0].vertex not in self.vertices: 
-                return False
-            to_explore = self.get_neighbors(walk[0].vertex)
+        # # Process first element of walk: entity, root or wildcard (TODO: This should always be root!)
+        # if walk[0].root:
+        #     to_explore = self.get_neighbors(self.root)
+        # elif walk[0].wildcard:
+        #     print('WARNING: Found a root of a walk which is a wildcard, this should not happen!')
+        #     to_explore = [self.get_neighbors(x) for x in self.vertices]
+        # else:
+        #     if walk[0].vertex not in self.vertices: 
+        #         return False
+        #     to_explore = self.get_neighbors(walk[0].vertex)
             
-        # Let's first check if all vertices in the walk are present
-        for hop in walk[1:]:
-            if not hop.wildcard and hop.vertex not in self.vertices:
-                return False
+        # # Let's first check if all vertices in the walk are present
+        # for hop in walk[1:]:
+        #     if not hop.wildcard and hop.vertex not in self.vertices:
+        #         return False
         
-        # TODO: This code below is currently never executed, since
-        # all walks are of the form root --> wildcards --> vertex
+        # # TODO: This code below is currently never executed, since
+        # # all walks are of the form root --> wildcards --> vertex
 
-        # Process second element until end. Alternate between entities and predicates.
-        for hop_nr, hop in enumerate(walk[1:]):
+        # # Process second element until end. Alternate between entities and predicates.
+        # for hop_nr, hop in enumerate(walk[1:]):
                                
-            if hop_nr == len(walk) - 1:
-                return True
+        #     if hop_nr == len(walk) - 1:
+        #         return True
                 
-            #print(hop, hop.vertex.name, [x.name for x in to_explore])
-            new_explore = set()
-            if not hop.vertex.predicate:  # Entity
-                if hop.wildcard:
-                    for node in to_explore:
-                        for neighbor in self.get_neighbors(node):
-                            new_explore.add(neighbor)
-                else:
-                    for node in to_explore:
-                        if hop.vertex.name in [x.name for x in self.get_neighbors(node)]:
-                            new_explore.add(self.name_to_vertex[hop.vertex.name])
-            else:  # Predicate
-                for node in to_explore:
-                    for neighbor in self.get_neighbors(node):
-                        if hop.wildcard or neighbor.name == hop.vertex.name:
-                            new_explore.add(neighbor)
+        #     #print(hop, hop.vertex.name, [x.name for x in to_explore])
+        #     new_explore = set()
+        #     if not hop.vertex.predicate:  # Entity
+        #         if hop.wildcard:
+        #             for node in to_explore:
+        #                 for neighbor in self.get_neighbors(node):
+        #                     new_explore.add(neighbor)
+        #         else:
+        #             for node in to_explore:
+        #                 if hop.vertex.name in [x.name for x in self.get_neighbors(node)]:
+        #                     new_explore.add(self.name_to_vertex[hop.vertex.name])
+        #     else:  # Predicate
+        #         for node in to_explore:
+        #             for neighbor in self.get_neighbors(node):
+        #                 if hop.wildcard or neighbor.name == hop.vertex.name:
+        #                     new_explore.add(neighbor)
 
-            to_explore = new_explore
+        #     to_explore = new_explore
             
-            if len(to_explore) == 0:
-                return False
+        #     if len(to_explore) == 0:
+        #         return False
 
 
-        return True
+        # return True
 
     def extract_random_walks(self, depth, max_walks=None, root=None):
         # Initialize one walk of length 1 (the root)
