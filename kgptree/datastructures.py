@@ -23,8 +23,7 @@ import copy
 
 class Vertex(object):
     
-    def __init__(self, name, predicate=False, _from=None, _to=None, 
-                 wildcard=False, literal=False):
+    def __init__(self, name, predicate=False, _from=None, _to=None):
         self.name = name
         self.predicate = predicate
         self._from = _from
@@ -112,7 +111,8 @@ class Graph(object):
         for d in range(depth):
             new_explore = set()
             for v in list(to_explore):
-                neighborhood.depth_map[d].add(v)
+                if not v.predicate:
+                    neighborhood.depth_map[d].add(v.get_name())
                 for neighbor in self.get_neighbors(v):
                     new_explore.add(neighbor)
             to_explore = new_explore
@@ -156,8 +156,8 @@ class Neighborhood(object):
     def __init__(self):
         self.depth_map = defaultdict(set)
         
-    def find_walk(self, walk):
-        return walk.vertex in self.depth_map[walk.depth]
+    def find_walk(self, vertex, depth):
+        return vertex in self.depth_map[depth]
 
 
 class Walk(object):
@@ -199,7 +199,7 @@ class Tree():
         if self.walk is None:
             return self._class
         
-        if neighborhood.find_walk(self.walk):
+        if neighborhood.find_walk(self.walk[0], self.walk[1]):
             return self.right.evaluate(neighborhood)
         else:
             return self.left.evaluate(neighborhood)
