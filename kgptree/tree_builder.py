@@ -15,7 +15,12 @@ import psutil
 @ray.remote
 def _calculate_igs(neighborhoods, labels, walks, n_walks):
     prior_entropy = entropy(np.unique(labels, return_counts=True)[1])
-    top_walks = ds.TopQueue(n_walks)
+    
+    if n_walks > 1:
+        top_walks = ds.TopQueue(n_walks)
+    else:
+        max_ig, top_walk = 0, (None, None)
+
     for (vertex, depth) in walks:
         features = {0: [], 1: []}
         for inst, label in zip(neighborhoods, labels):
@@ -26,9 +31,17 @@ def _calculate_igs(neighborhoods, labels, walks, n_walks):
         neg_frac = len(features[0]) / len(neighborhoods)
         neg_entr = entropy(np.unique(features[0], return_counts=True)[1])
         ig = prior_entropy - (pos_frac * pos_entr + neg_frac * neg_entr)
-        top_walks.add((vertex, depth), ig)
+        if n_walks > 1:
+            top_walks.add((vertex, depth), ig)
+        else:
+            if ig >= max_ig:
+                max_ig = ig
+                top_walk = (vertex, depth)
 
-    return top_walks.data
+    if n_walks > 1:
+        return top_walks.data
+    else:
+        return [(max_ig, top_walk)]
 
 class KGPMixin():
     def __init__(self, path_max_depth=8, progress=None, n_jobs=1, init=True):
@@ -55,7 +68,6 @@ class KGPMixin():
         if useless is not None:
             old_len = len(walks)
             walks = walks - useless
-            print('Removed {} walks'.format(old_len - len(walks)))
 
         # Convert to list so we can sample & shuffle
         walks = list(walks)
@@ -101,12 +113,25 @@ class KGPMixin():
                                    n_walks) 
              for i in range(self.n_jobs)]
         )
-        top_walks = ds.TopQueue(n_walks)
+
+        if n_walks > 1:
+            top_walks = ds.TopQueue(n_walks)
+        else:
+            max_ig, top_walk = 0, None
+
         for data in results:
             for ig, (vertex, depth) in data:
-                top_walks.add((vertex, depth), ig)
+                if n_walks > 1:
+                    top_walks.add((vertex, depth), ig)
+                else:
+                    if ig >= max_ig:
+                        max_ig = ig
+                        top_walk = (vertex, depth)
 
-        return top_walks.data
+        if n_walks > 1:
+            return top_walks.data
+        else:
+            return [(max_ig, top_walk)]
 
     def _prune_useless(self, neighborhoods, labels):
         """Provide a set of walks that can either be found in all 
@@ -346,6 +371,6 @@ class KPGTransformer(BaseEstimator, TransformerMixin, KGPMixin):
 
         features = np.zeros((len(instances), self.n_features))
         for i, neighborhood in enumerate(neighborhoods):
-            for j, walk in enumerate(self.walks_):
-                features[i, j] = neighborhood.find_walk(walk)
+            for j, (vertex, depth) in enumerate(self.walks_):
+                features[i, j] = neighborhood.find_walk(vertex, depth)
         return features
