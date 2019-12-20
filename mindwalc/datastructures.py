@@ -210,5 +210,5 @@ class Tree():
         if self.left is not None:
             left_count = self.left.node_count
         if self.right is not None:
-            right_count = self.left.node_count
+            right_count = self.right.node_count
         return 1 + left_count + right_count
