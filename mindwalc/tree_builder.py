@@ -43,7 +43,7 @@ def _calculate_igs(neighborhoods, labels, walks, n_walks):
     else:
         return [(max_ig, top_walk)]
 
-class KGPMixin():
+class MINDWALCMixin():
     def __init__(self, path_max_depth=8, progress=None, n_jobs=1, init=True):
         if init:
             if n_jobs == -1:
@@ -157,7 +157,7 @@ class KGPMixin():
             self.neighborhoods.append(neighborhood)
 
 
-class KGPTree(BaseEstimator, ClassifierMixin, KGPMixin):
+class MINDWALCTree(BaseEstimator, ClassifierMixin, MINDWALCMixin):
     def __init__(self, path_max_depth=8, min_samples_leaf=1, 
                  progress=None, max_tree_depth=None, n_jobs=1,
                  init=True):
@@ -228,7 +228,7 @@ class KGPTree(BaseEstimator, ClassifierMixin, KGPMixin):
         return preds
 
 
-class KGPForest(BaseEstimator, ClassifierMixin, KGPMixin):
+class MINDWALCForest(BaseEstimator, ClassifierMixin, MINDWALCMixin):
     def __init__(self, path_max_depth=1, min_samples_leaf=1, 
                  max_tree_depth=None, n_estimators=10, bootstrap=True, 
                  vertex_sample=0.9, progress=None, n_jobs=1):
@@ -255,8 +255,8 @@ class KGPForest(BaseEstimator, ClassifierMixin, KGPMixin):
             sampled_inst = self.neighborhoods
             sampled_labels = self.labels
 
-        # Create a KGPTree, fit it and add to self.estimators_
-        tree = KGPTree(self.path_max_depth, self.min_samples_leaf, 
+        # Create a MINDWALCTree, fit it and add to self.estimators_
+        tree = MINDWALCTree(self.path_max_depth, self.min_samples_leaf, 
                        self.progress, self.max_tree_depth, self.n_jobs,
                        init=False)
         tree.tree_ = tree._build_tree(sampled_inst, sampled_labels, 
@@ -304,7 +304,7 @@ class KGPForest(BaseEstimator, ClassifierMixin, KGPMixin):
             predictions.append(Counter(inst_preds).most_common()[0][0])
         return predictions
 
-class KPGTransformer(BaseEstimator, TransformerMixin, KGPMixin):
+class MINDWALCTransform(BaseEstimator, TransformerMixin, MINDWALCMixin):
     def __init__(self, path_max_depth=8, progress=None, n_jobs=1, 
                  n_features=1):
         super().__init__(path_max_depth, progress, n_jobs)
