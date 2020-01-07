@@ -13,14 +13,9 @@ import ray
 import psutil
 
 @ray.remote
-def _calculate_igs(neighborhoods, labels, walks, n_walks):
+def _calculate_igs(neighborhoods, labels, walks):
     prior_entropy = entropy(np.unique(labels, return_counts=True)[1])
-    
-    if n_walks > 1:
-        top_walks = ds.TopQueue(n_walks)
-    else:
-        max_ig, top_walk = 0, (None, None)
-
+    results = []
     for (vertex, depth) in walks:
         features = {0: [], 1: []}
         for inst, label in zip(neighborhoods, labels):
@@ -31,17 +26,10 @@ def _calculate_igs(neighborhoods, labels, walks, n_walks):
         neg_frac = len(features[0]) / len(neighborhoods)
         neg_entr = entropy(np.unique(features[0], return_counts=True)[1])
         ig = prior_entropy - (pos_frac * pos_entr + neg_frac * neg_entr)
-        if n_walks > 1:
-            top_walks.add((vertex, depth), ig)
-        else:
-            if ig >= max_ig:
-                max_ig = ig
-                top_walk = (vertex, depth)
 
-    if n_walks > 1:
-        return top_walks.data
-    else:
-        return [(max_ig, top_walk)]
+        results.append((ig, (vertex, depth)))
+
+    return results
 
 class MINDWALCMixin():
     def __init__(self, path_max_depth=8, progress=None, n_jobs=1, init=True):
@@ -109,23 +97,27 @@ class MINDWALCMixin():
 
         results = ray.get(
             [_calculate_igs.remote(neighborhoods_id, labels_id, 
-                                   walk_iterator[i*chunk_size:(i+1)*chunk_size],
-                                   n_walks) 
+                                   walk_iterator[i*chunk_size:(i+1)*chunk_size]) 
              for i in range(self.n_jobs)]
         )
 
         if n_walks > 1:
             top_walks = ds.TopQueue(n_walks)
         else:
-            max_ig, top_walk = 0, None
+            max_ig, best_depth, top_walk = 0, float('inf'), None
 
         for data in results:
             for ig, (vertex, depth) in data:
                 if n_walks > 1:
-                    top_walks.add((vertex, depth), ig)
+                    top_walks.add((vertex, depth), (ig, -depth))
                 else:
-                    if ig >= max_ig:
+                    if ig > max_ig:
                         max_ig = ig
+                        best_depth = depth
+                        top_walk = (vertex, depth)
+                    elif ig == max_ig and depth < best_depth:
+                        max_ig = ig
+                        best_depth = depth
                         top_walk = (vertex, depth)
 
         if n_walks > 1:
@@ -185,7 +177,7 @@ class MINDWALCTree(BaseEstimator, ClassifierMixin, MINDWALCMixin):
         if len(walks) == 0 or walks[0][0] == 0:
             return ds.Tree(walk=None, _class=majority_class)
 
-        best_ig, best_walk = walks[0]
+        _, best_walk = walks[0]
         best_vertex, best_depth = best_walk
 
         node = ds.Tree(walk=best_walk, _class=None)
@@ -349,7 +341,7 @@ class MINDWALCTransform(BaseEstimator, TransformerMixin, MINDWALCMixin):
 
             prev_len = len(self.walks_)
             n_walks = min(self.n_features // len(np.unique(labels)), len(walks))
-            for _, walk in sorted(walks, key=lambda x: -x[0]):
+            for _, walk in sorted(walks, key=lambda x: x[0], reverse=True):
                 if len(self.walks_) - prev_len >= n_walks:
                     break
 
