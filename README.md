@@ -60,3 +60,16 @@ We provided an example Jupyter notebook as well (`kgptree/Example (AIFB).ipynb`)
 ## Reproducing paper results
 
 In order to reproduce the results, you will first have to obtain the different datasets. The knowledge graph datasets can be obtained from [here](http://data.dws.informatik.uni-mannheim.de/rmlod/LOD_ML_Datasets/). Afterwards, the script `mindwalc/experiments/benchmark_knowledge_graphs.py` can be run, which will generate pickle files in the `output/` directory for each run. We already populated the `output/` directory with our own measurements. Afterwards, the pickle files can be processed by running `mindwalc/experiments/parse_results.py`
+
+## How to cite
+
+If you use `MINDWALC` for research purposes, we would appreciate citations:
+```
+@inproceedings{vandewiele2019inducing,
+  title={Inducing a decision tree with discriminative paths to classify entities in a knowledge graph},
+  author={Vandewiele, Gilles and Steenwinckel, Bram and Ongenae, Femke and De Turck, Filip},
+  booktitle={SEPDA2019, the 4th International Workshop on Semantics-Powered Data Mining and Analytics},
+  pages={1--6},
+  year={2019}
+}
+```
