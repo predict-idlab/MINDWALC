@@ -16,6 +16,14 @@ Alternatively, a forest of trees can be built, where each tree is built from a s
 
 Instead of mining walks recursively, we can also perform only a single pass over the data and keep track of K walks maximizing information gain. These walks can then, in turn, be used to create binary feature vectors for training and testing entities. These feature vectors can then be fed to any classification algorithm.
 
+## Software Dependencies:
+### graphviz
+Graphviz is used to visualize trained decision trees. For this, you need to install the graphviz kernel on your os:
+
+- Ubuntu/Debian: `sudo apt-get install graphviz`
+- MacOS: `brew install graphviz`
+- windows: https://graphviz.org/download/
+
 ## How can I use MINDWALC for my own dataset?
 
 Dead simple! Our algorithm requires the following input:

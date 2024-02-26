@@ -20,6 +20,8 @@ from scipy.stats import entropy
 from hashlib import md5
 import copy
 
+# for decision tree visualisation:
+from graphviz import Source
 
 class Vertex(object):
     
@@ -194,6 +196,7 @@ class Tree():
         self.right = None
         self._class = _class
         self.walk = walk
+        self.node_number = None
         
     def evaluate(self, neighborhood):
         if self.walk is None:
@@ -212,3 +215,109 @@ class Tree():
         if self.right is not None:
             right_count = self.right.node_count
         return 1 + left_count + right_count
+
+    def visualize(self, output_path, _view=True, node_properties_function=None, meta_infos='', as_pdf=True):
+        """
+        Visualise the tree with [graphviz](http://www.graphviz.org/) and save it as pdf and or .gv file.
+
+        **Params**
+        ----------
+          - `output_path` (string) - where the file needs to be saved
+          - `_view` (boolean) - open the pdf after generation or not
+          - `node_properties_function` (function) - function (params: xxx). Passed function returns a
+            dict which contains the properties of the generated graph,
+            using the Graphviz dot languade. see self._default_tree_visualization as example!
+          - `meta_infos` (string) - a string, usually containing some usefully infos about the tree
+            (which params used for decision tree classification training, which dataset used ...)
+          - `as_pdf` (boolean) - if True, the output file will be a pdf % a .gv file, otherwise only one .gv file
+        **Returns**
+        -----------
+            nothing
+        """
+
+        output_path = output_path + '.gv' if output_path.lower().endswith('.gv') else output_path
+
+        if not node_properties_function:
+            node_properties_function = self._default_node_visualization
+        dot_code = self.convert_to_dot(node_properties_function, infos=meta_infos)
+        if as_pdf:
+            src = Source(dot_code)
+            src.render(output_path, view=_view)
+        else:
+            with open(output_path, 'w') as f:
+                f.write(dot_code)
+
+    def _default_node_visualization(self, node: Vertex):
+        """
+        Default function to visualize a decision tree node.
+        uses the node ids for naming.
+        :param node: the node to visualize
+        :return: a dict containing the visualisation-properties of the node
+        """
+
+        is_leaf_node = True if node._class else False
+        out = {'label': (node._class if is_leaf_node else node.walk[0] + f'\nd = {int(node.walk[1])}'),
+               'fillcolor': '#DAE8FC' if is_leaf_node else '#FFF2CC',
+               'color': '#6C8EBF' if is_leaf_node else "#D6B656",
+               'style': "rounded,filled",
+               'shape': 'ellipse' if is_leaf_node else 'box'}
+        return out
+
+    def convert_to_dot(self, label_func=None, font='Times-Roman', infos=''):
+        """Converts a decision tree object to DOT code
+
+        **Params**
+        ----------
+          - label_func (function) - function to label the nodes of the tree
+        **Returns**
+        -----------
+            a string with the dot code for the decision tree
+        """
+
+        if not label_func:
+            label_func = self._default_node_visualization
+
+        self.nummerate_nodes_of_tree()
+        s = 'digraph DT{\n'
+        s += f'label="{infos}"\nfontname="{font}"\n'
+        s += f'node[fontname="{font}"];\n'
+        s += self._convert_node_to_dot(label_func)
+        s += '}'
+        return s
+
+    def nummerate_nodes_of_tree(self, count=1):
+        """
+        Nummerate the nodes of the tree in order to give them unique names / ids.
+        Updates the node_number attribute of each tree node.
+        :param count:
+        :return:
+        """
+
+        self.node_number = count
+        if not self._class:
+            self.left.nummerate_nodes_of_tree(count=count + 1)
+            amount_subnodes_left = self.left.node_count
+            self.right.nummerate_nodes_of_tree(count=count + amount_subnodes_left + 1)
+
+    def _convert_node_to_dot(self, node_vis_props):
+        """Convert node to dot format in order to visualize our tree using graphviz
+        :param count: parameter used to give nodes unique names
+        :return: intermediate string of the tree in dot format, without preamble (this is no correct dot format yet!)
+        """
+
+        num = self.node_number
+        if self._class:  # leaf node:
+            node_render_props = node_vis_props(self)
+            node_props_dot = str([f'{k}="{node_render_props[k]}"' for k in node_render_props.keys()]).replace("'", '')
+            s = f'Node{str(num)} ' + node_props_dot + ';\n'
+        else:  # decision node:
+            node_render_props = node_vis_props(self)
+            node_props_dot = str([f'{k}="{node_render_props[k]}"' for k in node_render_props.keys()]).replace("'", '')
+            s = f'Node{str(num)} ' + node_props_dot + ';\n'
+            s += self.left._convert_node_to_dot(node_vis_props)
+            s += 'Node' + str(num) + ' -> ' + 'Node' + str(num + 1) + ' [label="false"];\n'
+            amount_subnodes_left = self.left.node_count
+            s += self.right._convert_node_to_dot(node_vis_props)
+            s += 'Node' + str(num) + ' -> ' + 'Node' + str(num + amount_subnodes_left + 1) + ' [label="true"];\n'
+
+        return s
