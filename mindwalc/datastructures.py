@@ -20,9 +20,6 @@ from scipy.stats import entropy
 from hashlib import md5
 import copy
 
-# for decision tree visualisation:
-from graphviz import Source
-
 class Vertex(object):
     
     def __init__(self, name, predicate=False, _from=None, _to=None):
@@ -241,11 +238,19 @@ class Tree():
             node_properties_function = self._default_node_visualization
         dot_code = self.convert_to_dot(node_properties_function, infos=meta_infos)
         if as_pdf:
-            src = Source(dot_code)
-            src.render(output_path, view=_view)
-        else:
-            with open(output_path, 'w') as f:
-                f.write(dot_code)
+            try:
+                from graphviz import Source
+                src = Source(dot_code)
+                src.render(output_path, view=_view)
+                return
+            except Exception as e:
+                print(f'An error occurred while trying to visualize a decision tree: \n{e}')
+                print('Please install graphviz to use the datastructures.Tree.visualize method with as_pdf=True. ')
+
+        with open(output_path, 'w') as f:
+            f.write(dot_code)
+
+        return
 
     def _default_node_visualization(self, node: Vertex):
         """
