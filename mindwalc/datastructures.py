@@ -129,16 +129,16 @@ class Graph(object):
                 o = str(o)
 
                 if isinstance(s, rdflib.term.BNode):
-                    s_v = Vertex(str(s), wildcard=True)
+                    s_v = Vertex(str(s))
                 elif isinstance(s, rdflib.term.Literal):
-                    s_v = Vertex(str(s), literal=True)
+                    s_v = Vertex(str(s))
                 else:
                     s_v = Vertex(str(s))
                     
                 if isinstance(o, rdflib.term.BNode):
-                    o_v = Vertex(str(o), wildcard=True)
+                    o_v = Vertex(str(o))
                 elif isinstance(s, rdflib.term.Literal):
-                    o_v = Vertex(str(o), literal=True)
+                    o_v = Vertex(str(o))
                 else:
                     o_v = Vertex(str(o))
                     
