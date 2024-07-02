@@ -22,9 +22,10 @@ import copy
 
 class Vertex(object):
     
-    def __init__(self, name, predicate=False, _from=None, _to=None):
+    def __init__(self, name, predicate=False, _from=None, _to=None, relation_modified=False):
         self.name = name
         self.predicate = predicate
+        self.relation_modified = relation_modified
         self._from = _from
         self._to = _to
         
@@ -115,39 +116,64 @@ class Graph(object):
                 for neighbor in self.get_neighbors(v):
                     new_explore.add(neighbor)
             to_explore = new_explore
-        
+
         return neighborhood
 
     @staticmethod
-    def rdflib_to_graph(rdflib_g, label_predicates=[]):
-        kg = Graph()
-        for (s, p, o) in rdflib_g:
+    def rdflib_to_graph(rdflib_g, label_predicates=[], relation_tail_merging=True):
+        '''
+        Converts an rdflib graph to a Graph object.
+        During the conversion, a multi-relation graph (head)-[relation]->(tail) (aka subject, predicate, object)is converted to a non-relational graph.
+        e.g. converting it to (head)-->(relation)-->(tail), or, if apply_relation_tail_merging is True, to (head)-->(relation_tail).
 
+        :param rdflib_g: An rdflib graph, e.g. loaded with rdflib.Graph().parse('file.n3')
+        :param label_predicates: a list of predicates that are used as labels, and should not be converted to edges?
+        :param relation_tail_merging: If true, relation-tail-merging is applioed, as described in the paper
+        "Investigating and Optimizing MINDWALC Node Classification to Extract Interpretable DTs from KGs":
+        The process of relation-tail merging works as follows: First, a specific tail node is
+        selected, t, as well as a set of nr relations of identical type, r, where the topological
+        form (*)-r->(t) is given. The process of relation-tail merging then involves inserting
+        a new node, rt, so that (*)-r->(t) turns into (*)-->(rt)-->(t). The new directional
+        edges, -->, are now typeless, and the new inserted node, rt, represents a relationmodified node and is
+        named accordingly in the form <type_of_r>_<name_of_t>.
+        :return: A Graph object of type datastructures::Graph
+        '''
+
+        kg = Graph()
+
+        for (s, p, o) in rdflib_g:
             if p not in label_predicates:
+
+                # Literals are attribute values in RDF, for instance, a person’s name, the date of birth, height, etc.
+                if isinstance(s, rdflib.term.Literal) and not str(s):
+                    s = "EmptyLiteral"
+                if isinstance(p, rdflib.term.Literal) and not str(p):
+                    p = "EmptyLiteral"
+                if isinstance(o, rdflib.term.Literal) and not str(o):
+                    o = "EmptyLiteral"
+
                 s = str(s)
                 p = str(p)
                 o = str(o)
 
-                if isinstance(s, rdflib.term.BNode):
-                    s_v = Vertex(str(s), wildcard=True)
-                elif isinstance(s, rdflib.term.Literal):
-                    s_v = Vertex(str(s), literal=True)
+                s_v = Vertex(s)
+
+                if relation_tail_merging:
+                    o_v_relation_mod = Vertex(f"{p}_MODIFIED_{o}", relation_modified=True)
+                    o_v = Vertex(o)
+                    kg.add_vertex(s_v)
+                    kg.add_vertex(o_v_relation_mod)
+                    kg.add_vertex(o_v)
+                    kg.add_edge(s_v, o_v_relation_mod)
+                    kg.add_edge(o_v_relation_mod, o_v)
                 else:
-                    s_v = Vertex(str(s))
-                    
-                if isinstance(o, rdflib.term.BNode):
-                    o_v = Vertex(str(o), wildcard=True)
-                elif isinstance(s, rdflib.term.Literal):
-                    o_v = Vertex(str(o), literal=True)
-                else:
-                    o_v = Vertex(str(o))
-                    
-                p_v = Vertex(str(p), predicate=True, _from=s_v, _to=o_v)
-                kg.add_vertex(s_v)
-                kg.add_vertex(p_v)
-                kg.add_vertex(o_v)
-                kg.add_edge(s_v, p_v)
-                kg.add_edge(p_v, o_v)
+                    o_v = Vertex(o)
+                    p_v = Vertex(p, predicate=True, _from=s_v, _to=o_v)
+                    kg.add_vertex(s_v)
+                    kg.add_vertex(p_v)
+                    kg.add_vertex(o_v)
+                    kg.add_edge(s_v, p_v)
+                    kg.add_edge(p_v, o_v)
         return kg
 
 
@@ -326,3 +352,60 @@ class Tree():
             s += 'Node' + str(num) + ' -> ' + 'Node' + str(num + amount_subnodes_left + 1) + ' [label="true"];\n'
 
         return s
+
+if __name__ == "__main__":
+    from tree_builder import MINDWALCTree, MINDWALCForest, MINDWALCTransform
+    import pandas as pd
+    from sklearn.metrics import accuracy_score, confusion_matrix
+
+    # load graph:
+    rdf_file = 'data/AIFB/aifb.n3'
+    _format = 'n3'
+    label_predicates = [ # these predicates will be deleted, otherwise clf task would get to easy?
+        rdflib.URIRef('http://swrc.ontoware.org/ontology#affiliation'),
+        rdflib.URIRef('http://swrc.ontoware.org/ontology#employs'),
+        rdflib.URIRef('http://swrc.ontoware.org/ontology#carriedOutBy')
+    ]
+    g = rdflib.Graph()
+    g.parse(rdf_file, format=_format)
+
+    # load train data:
+    train_file = 'data/AIFB/AIFB_test.tsv'
+    test_file = 'data/AIFB/AIFB_train.tsv'
+    entity_col = 'person'
+    label_col = 'label_affiliation'
+    test_data = pd.read_csv(train_file, sep='\t')
+    train_data = pd.read_csv(test_file, sep='\t')
+
+    train_entities = [rdflib.URIRef(x) for x in train_data[entity_col]]
+    train_labels = train_data[label_col]
+
+    test_entities = [rdflib.URIRef(x) for x in test_data[entity_col]]
+    test_labels = test_data[label_col]
+
+
+    # convert to non relational graphs using relation-to-node convertion:
+    kg = Graph.rdflib_to_graph(g, label_predicates=label_predicates, relation_tail_merging=False)
+    verts_a = len(kg.vertices)
+    print(f"generated graph using relation-to-node-convertion has {str(float(verts_a)/1000).replace('.', ',')} vertices")
+    clf = MINDWALCTree(path_max_depth=8, min_samples_leaf=1, max_tree_depth=None, n_jobs=1)
+    clf.fit(kg, train_entities, train_labels)
+    preds = clf.predict(kg, test_entities)
+    print(f"accuracy: {accuracy_score(test_labels, preds)}")
+
+    print()
+
+    # convert to non relational graphs using relation-tail-merging:
+    kg = Graph.rdflib_to_graph(g, label_predicates=label_predicates, relation_tail_merging=True)
+    verts_b = len(kg.vertices)
+    print(
+        f"generated graph using relation_tail_merging has {str(float(verts_b)/1000).replace('.', ',')} vertices")
+    clf = MINDWALCTree(path_max_depth=8, min_samples_leaf=1, max_tree_depth=None, n_jobs=1)
+    clf.fit(kg, train_entities, train_labels)
+    preds = clf.predict(kg, test_entities)
+    print(f"accuracy: {accuracy_score(test_labels, preds)}")
+
+    print(f"\nrelation_tail_merging reduced the number of vertices by {verts_a - verts_b} ({round((verts_a - verts_b)/verts_a *100, 0)} %)")
+
+
+
