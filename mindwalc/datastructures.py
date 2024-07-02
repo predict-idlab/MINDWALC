@@ -120,7 +120,7 @@ class Graph(object):
         return neighborhood
 
     @staticmethod
-    def rdflib_to_graph(rdflib_g, label_predicates=[], relation_tail_merging=True):
+    def rdflib_to_graph(rdflib_g, label_predicates=[], relation_tail_merging=False):
         '''
         Converts an rdflib graph to a Graph object.
         During the conversion, a multi-relation graph (head)-[relation]->(tail) (aka subject, predicate, object)is converted to a non-relational graph.
@@ -485,8 +485,12 @@ if __name__ == "__main__":
     kg = Graph.rdflib_to_graph(g, label_predicates=label_predicates, relation_tail_merging=False)
     #kg.graph_to_neo4j(password=sys.argv[1])
     verts_a = len(kg.vertices)
-    print(f"generated graph using relation-to-node-convertion has {str(float(verts_a)/1000).replace('.', ',')} vertices")
-    clf = MINDWALCTree(path_max_depth=6, min_samples_leaf=1, max_tree_depth=None, n_jobs=1)
+    rels_a = len(kg.transition_matrix)
+
+    print(f"generated graph using relation-to-node-convertion has "
+          f"{str(float(verts_a)/1000).replace('.', ',')} vertices")
+    print(f"and {str(float(rels_a)/1000).replace('.', ',')} relations")
+    clf = MINDWALCTree(path_max_depth=8, min_samples_leaf=1, max_tree_depth=None, n_jobs=1)
     clf.fit(kg, train_entities, train_labels)
     preds = clf.predict(kg, test_entities)
     print(f"accuracy: {accuracy_score(test_labels, preds)}")
@@ -496,14 +500,17 @@ if __name__ == "__main__":
     # convert to non relational graphs using relation-tail-merging:
     kg = Graph.rdflib_to_graph(g, label_predicates=label_predicates, relation_tail_merging=True)
     verts_b = len(kg.vertices)
-    print(
-        f"generated graph using relation_tail_merging has {str(float(verts_b)/1000).replace('.', ',')} vertices")
-    clf = MINDWALCTree(path_max_depth=6, min_samples_leaf=1, max_tree_depth=None, n_jobs=1)
+    rels_b = len(kg.transition_matrix)
+    print(f"generated graph using relation_tail_merging has "
+          f"{str(float(verts_b)/1000).replace('.', ',')} vertices")
+    print(f"and {str(float(rels_b)/1000).replace('.', ',')} relations")
+    clf = MINDWALCTree(path_max_depth=8, min_samples_leaf=1, max_tree_depth=None, n_jobs=1)
     clf.fit(kg, train_entities, train_labels)
     preds = clf.predict(kg, test_entities)
     print(f"accuracy: {accuracy_score(test_labels, preds)}")
 
-    print(f"\nrelation_tail_merging reduced the number of vertices by {verts_a - verts_b} ({round((verts_a - verts_b)/verts_a *100, 0)} %)")
+    print(f"\nrelation-tail merging reduced the number of vertices by {verts_a - verts_b} ({round((verts_a - verts_b)/verts_a *100, 2)} %)")
+    print(f"relation-tail merging reduced the number of relations by {rels_a - rels_b} ({round((rels_a - rels_b)/rels_a *100, 2)} %)")
 
 
 
