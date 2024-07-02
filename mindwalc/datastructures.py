@@ -120,7 +120,7 @@ class Graph(object):
         return neighborhood
 
     @staticmethod
-    def rdflib_to_graph(rdflib_g, label_predicates=[], relation_tail_merging=False):
+    def rdflib_to_graph(rdflib_g, label_predicates=[], relation_tail_merging=False, skip_literals=False):
         '''
         Converts an rdflib graph to a Graph object.
         During the conversion, a multi-relation graph (head)-[relation]->(tail) (aka subject, predicate, object)is converted to a non-relational graph.
@@ -136,6 +136,8 @@ class Graph(object):
         a new node, rt, so that (*)-r->(t) turns into (*)-->(rt)-->(t). The new directional
         edges, -->, are now typeless, and the new inserted node, rt, represents a relationmodified node and is
         named accordingly in the form <type_of_r>_<name_of_t>.
+        :param skip_literals: If True, literals (=node properties/attributes) are skipped during the conversion.
+        Otherwise, they are converted to nodes. so that a node (n: {name: 'John'}) becomes (n)-->(name)-->(john).
         :return: A Graph object of type datastructures::Graph
         '''
 
@@ -143,6 +145,9 @@ class Graph(object):
 
         for (s, p, o) in rdflib_g:
             if p not in label_predicates:
+
+                if skip_literals and isinstance(o, rdflib.term.Literal):
+                    continue
 
                 # Literals are attribute values in RDF, for instance, a person’s name, the date of birth, height, etc.
                 if isinstance(s, rdflib.term.Literal) and not str(s):
@@ -465,6 +470,7 @@ if __name__ == "__main__":
     ]
     g = rdflib.Graph()
     g.parse(rdf_file, format=_format)
+    skip_literals = True
 
     # load train data:
     train_file = 'data/AIFB/AIFB_test.tsv'
@@ -482,7 +488,8 @@ if __name__ == "__main__":
 
 
     # convert to non relational graphs using relation-to-node convertion:
-    kg = Graph.rdflib_to_graph(g, label_predicates=label_predicates, relation_tail_merging=False)
+    kg = Graph.rdflib_to_graph(g, label_predicates=label_predicates, relation_tail_merging=False,
+                               skip_literals=skip_literals)
     #kg.graph_to_neo4j(password=sys.argv[1])
     verts_a = len(kg.vertices)
     rels_a = len(kg.transition_matrix)
@@ -498,7 +505,8 @@ if __name__ == "__main__":
     print()
 
     # convert to non relational graphs using relation-tail-merging:
-    kg = Graph.rdflib_to_graph(g, label_predicates=label_predicates, relation_tail_merging=True)
+    kg = Graph.rdflib_to_graph(g, label_predicates=label_predicates, relation_tail_merging=True,
+                               skip_literals=skip_literals)
     verts_b = len(kg.vertices)
     rels_b = len(kg.transition_matrix)
     print(f"generated graph using relation_tail_merging has "
