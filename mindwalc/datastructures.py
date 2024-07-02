@@ -176,6 +176,102 @@ class Graph(object):
                     kg.add_edge(p_v, o_v)
         return kg
 
+    def graph_to_neo4j(self, uri='bolt://localhost', user='neo4j', password='password'):
+        '''
+        Converts the graph to a neo4j database. Needs an empty running neo4j db.
+        :param uri: address where neo4j db is running
+        :param user: username of neo4j db
+        :param password: password of neo4j db
+        :return: None
+        '''
+
+        try:
+            from neo4j import GraphDatabase
+        except ImportError:
+            raise ImportError("Please install the neo4j-driver package to use this function.")
+        from tqdm import tqdm
+
+        use_nodes_for_predicates = True # if false, the predicates are used as edges. Otherwise as nodes.
+        relation_name = 'R'
+
+        driver = GraphDatabase.driver(uri, auth=(user, password))
+        with driver.session() as session:
+            # check if db is empty:
+            node_count = session.run("MATCH (n) return count(n)").single().value()
+            if node_count > 0:
+                print("Neo4j database is not empty, aborting graph to neo4h db convertion to avoid data loss.")
+                return
+
+            for v in self.vertices:
+                if not v.predicate:
+                    # name = v.name.split('/')[-1]
+                    name = v.name.replace("'", "")
+                    session.run(f"CREATE (a:Node" + (":RelationModified" if v.relation_modified else "") +
+                                " {name: '" + name + "'})")  # .split(' ')[0] + '_' + vertex.__hash__()
+
+            for v in tqdm(self.vertices):
+                if not v.predicate:
+                    # v_name = v.name.split('/')[-1]
+                    v_name = v.name.replace("'", "")
+
+                    node_type = "Node" + (":RelationModified" if v.relation_modified else "")
+
+                    ids_v = [r["id(v)"] for r in
+                             session.run(
+                                 "MATCH (v:" + node_type + " {name: '" + v_name + "'}) where not (v:Predicate) RETURN id(v)")]
+                    if len(ids_v) == 0:
+                        raise Exception(f"no id found for {v_name}")
+                    elif len(ids_v) == 1:
+                        id_v = ids_v[0]
+                    else:
+                        raise Exception(f"multiple ids found for {v_name}: {ids_v}")
+
+                    for pred in self.get_neighbors(v):
+
+                        if pred.predicate:
+                            pred_name = "".join(
+                                [c for c in pred.name.split('/')[-1].replace("#", "_").replace('-', '_') if
+                                 not c.isdigit()])
+                            pred_name = pred_name[1:] if pred_name[0] in ["_", "-"] else pred_name
+
+                            for obj in self.get_neighbors(pred):
+                                # obj_name = obj.name.split('/')[-1]
+                                obj_name = obj.name.replace("'", "")
+
+                                ids_obj = [r["id(obj)"] for r in
+                                           session.run(
+                                               "MATCH (obj:Node {name: '" + obj_name + "'}) where not (obj:Predicate) RETURN id(obj)")]
+                                if len(ids_obj) == 0:
+                                    raise Exception(f"no id found for {obj_name}")
+                                elif len(ids_obj) == 1:
+                                    id_obj = ids_obj[0]
+                                else:
+                                    raise Exception(f"multiple ids found for {obj_name}: {ids_obj}")
+
+                                if use_nodes_for_predicates:
+                                    q = (f"MATCH (a), (b) WHERE ID(a)={id_v} AND ID(b)={id_obj} "
+                                         "MERGE (a)-[:") + relation_name + "]->(c:Predicate {name: '" + pred_name + "'})-[:" + relation_name + "]->(b)"
+                                else:
+                                    q = f"MATCH (a), (b) WHERE ID(a)={id_v} AND ID(b)={id_obj} MERGE (a)-[:" + pred_name + "]->(b)"
+                                session.run(q)
+
+                        else:
+                            obj_name = pred.name.replace("'", "")
+
+                            ids_obj = [r["id(obj)"] for r in
+                                       session.run(
+                                           "MATCH (obj:Node {name: '" + obj_name + "'}) RETURN id(obj)")]
+                            if len(ids_obj) == 0:
+                                raise Exception(f"no id found for {obj_name}")
+                            elif len(ids_obj) == 1:
+                                id_obj = ids_obj[0]
+                            else:
+                                raise Exception(f"multiple ids found for {obj_name}: {ids_obj}")
+
+                            q = f"MATCH (a), (b) WHERE ID(a)={id_v} AND ID(b)={id_obj} MERGE (a)-[:" + relation_name + "]->(b)"
+                            session.run(q)
+
+        driver.close()
 
 class Neighborhood(object):
     def __init__(self):
@@ -357,6 +453,7 @@ if __name__ == "__main__":
     from tree_builder import MINDWALCTree, MINDWALCForest, MINDWALCTransform
     import pandas as pd
     from sklearn.metrics import accuracy_score, confusion_matrix
+    import sys
 
     # load graph:
     rdf_file = 'data/AIFB/aifb.n3'
@@ -386,9 +483,10 @@ if __name__ == "__main__":
 
     # convert to non relational graphs using relation-to-node convertion:
     kg = Graph.rdflib_to_graph(g, label_predicates=label_predicates, relation_tail_merging=False)
+    #kg.graph_to_neo4j(password=sys.argv[1])
     verts_a = len(kg.vertices)
     print(f"generated graph using relation-to-node-convertion has {str(float(verts_a)/1000).replace('.', ',')} vertices")
-    clf = MINDWALCTree(path_max_depth=8, min_samples_leaf=1, max_tree_depth=None, n_jobs=1)
+    clf = MINDWALCTree(path_max_depth=6, min_samples_leaf=1, max_tree_depth=None, n_jobs=1)
     clf.fit(kg, train_entities, train_labels)
     preds = clf.predict(kg, test_entities)
     print(f"accuracy: {accuracy_score(test_labels, preds)}")
@@ -400,7 +498,7 @@ if __name__ == "__main__":
     verts_b = len(kg.vertices)
     print(
         f"generated graph using relation_tail_merging has {str(float(verts_b)/1000).replace('.', ',')} vertices")
-    clf = MINDWALCTree(path_max_depth=8, min_samples_leaf=1, max_tree_depth=None, n_jobs=1)
+    clf = MINDWALCTree(path_max_depth=6, min_samples_leaf=1, max_tree_depth=None, n_jobs=1)
     clf.fit(kg, train_entities, train_labels)
     preds = clf.predict(kg, test_entities)
     print(f"accuracy: {accuracy_score(test_labels, preds)}")
