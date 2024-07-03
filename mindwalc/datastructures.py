@@ -471,6 +471,7 @@ if __name__ == "__main__":
     g = rdflib.Graph()
     g.parse(rdf_file, format=_format)
     skip_literals = True
+    path_max_depth = 8
 
     # load train data:
     train_file = 'data/AIFB/AIFB_test.tsv'
@@ -497,8 +498,10 @@ if __name__ == "__main__":
     print(f"generated graph using relation-to-node-convertion has "
           f"{str(float(verts_a)/1000).replace('.', ',')} vertices")
     print(f"and {str(float(rels_a)/1000).replace('.', ',')} relations")
-    clf = MINDWALCTree(path_max_depth=8, min_samples_leaf=1, max_tree_depth=None, n_jobs=1)
+    clf = MINDWALCTree(path_max_depth=path_max_depth, min_samples_leaf=1, max_tree_depth=None, n_jobs=1)
     clf.fit(kg, train_entities, train_labels)
+    clf.tree_.visualize("./data/AIFB/aifb_MINDWALCtree1", _view=False,
+                        meta_infos="Training method: MINDWALCTree, relation-to-node-converted graph")
     preds = clf.predict(kg, test_entities)
     print(f"accuracy: {accuracy_score(test_labels, preds)}")
 
@@ -512,8 +515,10 @@ if __name__ == "__main__":
     print(f"generated graph using relation_tail_merging has "
           f"{str(float(verts_b)/1000).replace('.', ',')} vertices")
     print(f"and {str(float(rels_b)/1000).replace('.', ',')} relations")
-    clf = MINDWALCTree(path_max_depth=8, min_samples_leaf=1, max_tree_depth=None, n_jobs=1)
+    clf = MINDWALCTree(path_max_depth=path_max_depth, min_samples_leaf=1, max_tree_depth=None, n_jobs=1)
     clf.fit(kg, train_entities, train_labels)
+    clf.tree_.visualize("./data/AIFB/aifb_MINDWALCtree2", _view=False,
+                        meta_infos="Training method: MINDWALCTree, relation-tail merged graph")
     preds = clf.predict(kg, test_entities)
     print(f"accuracy: {accuracy_score(test_labels, preds)}")
 
