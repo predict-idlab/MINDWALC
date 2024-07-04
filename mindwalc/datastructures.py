@@ -471,7 +471,7 @@ if __name__ == "__main__":
     g = rdflib.Graph()
     g.parse(rdf_file, format=_format)
     skip_literals = True
-    path_max_depth = 8
+    path_max_depth = 10
 
     # load train data:
     train_file = 'data/AIFB/AIFB_test.tsv'
@@ -493,11 +493,10 @@ if __name__ == "__main__":
                                skip_literals=skip_literals)
     #kg.graph_to_neo4j(password=sys.argv[1])
     verts_a = len(kg.vertices)
-    rels_a = len(kg.transition_matrix)
-
+    edges_a = sum([len(x) for x in kg.transition_matrix.values()])
     print(f"generated graph using relation-to-node-convertion has "
           f"{str(float(verts_a)/1000).replace('.', ',')} vertices")
-    print(f"and {str(float(rels_a)/1000).replace('.', ',')} relations")
+    print(f"and {str(float(edges_a) / 1000).replace('.', ',')} edges")
     clf = MINDWALCTree(path_max_depth=path_max_depth, min_samples_leaf=1, max_tree_depth=None, n_jobs=1)
     clf.fit(kg, train_entities, train_labels)
     clf.tree_.visualize("./data/AIFB/aifb_MINDWALCtree1", _view=False,
@@ -511,10 +510,10 @@ if __name__ == "__main__":
     kg = Graph.rdflib_to_graph(g, label_predicates=label_predicates, relation_tail_merging=True,
                                skip_literals=skip_literals)
     verts_b = len(kg.vertices)
-    rels_b = len(kg.transition_matrix)
+    edges_b = sum([len(x) for x in kg.transition_matrix.values()])
     print(f"generated graph using relation_tail_merging has "
           f"{str(float(verts_b)/1000).replace('.', ',')} vertices")
-    print(f"and {str(float(rels_b)/1000).replace('.', ',')} relations")
+    print(f"and {str(float(edges_b) / 1000).replace('.', ',')} edges")
     clf = MINDWALCTree(path_max_depth=path_max_depth, min_samples_leaf=1, max_tree_depth=None, n_jobs=1)
     clf.fit(kg, train_entities, train_labels)
     clf.tree_.visualize("./data/AIFB/aifb_MINDWALCtree2", _view=False,
@@ -523,7 +522,5 @@ if __name__ == "__main__":
     print(f"accuracy: {accuracy_score(test_labels, preds)}")
 
     print(f"\nrelation-tail merging reduced the number of vertices by {verts_a - verts_b} ({round((verts_a - verts_b)/verts_a *100, 2)} %)")
-    print(f"relation-tail merging reduced the number of relations by {rels_a - rels_b} ({round((rels_a - rels_b)/rels_a *100, 2)} %)")
-
-
+    print(f"relation-tail merging reduced the number of edges by {edges_a - edges_b} ({round((edges_a - edges_b) / edges_a * 100, 2)} %)")
 
