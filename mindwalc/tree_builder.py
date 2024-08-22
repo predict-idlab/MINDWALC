@@ -47,8 +47,9 @@ class MINDWALCMixin():
         """Generates an iterable with all possible walk candidates."""
         # Generate a set of all possible (vertex, depth) combinations
         walks = set()
-        for d in range(2, self.path_max_depth + 1, 2):
-            for neighborhood in neighborhoods:
+        #for d in range(2, self.path_max_depth + 1, 2):
+        for neighborhood in neighborhoods:
+            for d in neighborhood.depth_map.keys():
                 for vertex in neighborhood.depth_map[d]:
                     walks.add((vertex, d))
 
