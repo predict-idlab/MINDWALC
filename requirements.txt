@@ -10,6 +10,6 @@ psutil == 5.6.6
 ray == 0.7.6
 rdflib == 4.2.2
 scikit_learn == 0.21.2
-scipy == 0.19.1
+scipy == 1.10.0
 tqdm == 4.19.5
 # graphviz == 0.20.1 this is optional. See README.md for more details.
